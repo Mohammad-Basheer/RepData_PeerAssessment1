@@ -4,22 +4,122 @@ output:
   html_document:
     keep_md: true
 ---
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 ## Loading and preprocessing the data
+```{r load_data}
+actdf <- read.csv("activity.csv")
+actdf$date <- as.Date(actdf$date) #convert date column to date type
+```
+==================================================================================
 
+##Histogram for total steps taken each day
+```{r hist_steps_day}
+totalStepsDay <- tapply(actdf$steps,actdf$date, sum, na.rm = TRUE)
+hist(totalStepsDay)
+```
+==================================================================================
 
+## Mean and median number of steps taken each day
+```{r mean_median}
+MeanStepsDay <- tapply(actdf$steps,actdf$date, mean, na.rm = TRUE)
+MedianStepsDay <- tapply(actdf$steps,actdf$date, median, na.rm = TRUE)
+```
 
-## What is mean total number of steps taken per day?
+### What is mean total number of steps taken per day?
+```{r mean_plot}
+barplot(MeanStepsDay, main = "Mean steps per day")
+```
 
-
+### What is median total number of steps taken per day?
+```{r median_plot}
+barplot(MedianStepsDay, main = "Median steps per day")
+```
+==================================================================================
 
 ## What is the average daily activity pattern?
+```{r average_daily}
+AverageTimeStep <-  tapply(actdf$steps,actdf$interval, mean, na.rm = TRUE)
+plot(AverageTimeStep, type='l', xlab = "5 minutes intervals")
 
+MaxAverage = as.numeric(which.max(AverageTimeStep))
+MaxInterval= names(which.max(AverageTimeStep))
+```
+### max average value = `r MaxAverage` and this of the time interval = `r MaxInterval`
 
+==================================================================================
 
 ## Imputing missing values
+```{r missing}
+missing_rows = sum(is.na(actdf$steps))
+missing_ratio = missing_rows/ length (actdf$steps)
+```
+###missing values size
+there are number of missing values in the dataset = `r missing_rows`.
+the ratio of missing valus = `r missing_ratio`.
 
+###imputing stratgy
+imputing missing values by insert average value of  mean for that 5-minute interval, and keep the results in actImputeddf
 
+```{r imputing}
+actImputeddf <- actdf
+for(index  in 1: length(actImputeddf$steps)) {
+  if( is.na(actImputeddf$steps[index])) {
+    averageIndex <- as.character(actImputeddf$interval[index]) # get the interval id
+    actImputeddf$steps[index] <-  as.numeric(AverageTimeStep[averageIndex]) # set value wz average
+     }
+}
+```
+##Histogram of the total number of steps taken each day after missing values are imputed
+```{r}
+totalStepsDay_imputed <- tapply(actImputeddf$steps,actImputeddf$date, sum, na.rm = TRUE)
+hist(totalStepsDay_imputed)
+```
+
+## Mean and median number of steps taken each day after imputing
+```{r mean_median_imp}
+MeanStepsDay_imp <- tapply(actImputeddf$steps,actImputeddf$date, mean, na.rm = TRUE)
+MedianStepsDay_imp <- tapply(actImputeddf$steps,actImputeddf$date, median, na.rm = TRUE)
+```
+
+###  mean and median total number of steps taken per day before and after imputing and clear increase in values
+```{r , fig.height= 6}
+par(mfcol = c(2,2), mar = c(2,2,2,2))
+barplot(MeanStepsDay, main = "Mean steps per day")
+barplot(MeanStepsDay_imp, main = "Mean steps per day after imputing")
+barplot(MedianStepsDay, main = "Median steps per day")
+barplot(MedianStepsDay_imp, main = "Median steps per day after imputing")
+```
+
+==================================================================================
 
 ## Are there differences in activity patterns between weekdays and weekends?
+###we will go to answer this question as follow
+**Processing to get the difference**  
+adding new column to the data with two levels weekday and weekend
+```{r }
+actImputeddf$Day <- weekdays(actImputeddf$date)
+for(index  in 1: length(actImputeddf$Day)) {
+  if( actImputeddf$Day[index] == "Saturday" |  actImputeddf$Day[index] == "Sunday") {
+    actImputeddf$Day[index] = "Weekend"
+  }
+  else
+  {
+    actImputeddf$Day[index] = "Weekday"
+  }
+}
+```
+
+**Drawing the difference** 
+Draw average steps per weekdays against average steps per weekends
+```{r , fig.height= 6}
+actWeekDays <- actImputeddf[actImputeddf$Day == "Weekday",]
+weekdayaver <-  tapply(actWeekDays$steps,actWeekDays$interval, mean, na.rm = TRUE)
+actWeekends <- actImputeddf[actImputeddf$Day == "Weekend",]
+weekendaver <-  tapply(actWeekends$steps,actWeekends$interval, mean, na.rm = TRUE)
+par(mfrow = c(2:1), mar = c(3,3,3,3))
+plot(weekdayaver, type='l', main = "Average steps per weekdays")
+plot(weekendaver, type='l', main = "Average steps per weekends")
+```
